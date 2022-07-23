@@ -1,3 +1,4 @@
+import timeago
 from datetime import datetime
 from threading import Lock
 from typing import Dict
@@ -62,7 +63,9 @@ def handle_query(d):
         case 'clients_count':
             send(CLIENT_COUNT)
         case 'connection_start':
-            send(CLIENT_TIMES.get(request.sid).isoformat())
+            t_started = CLIENT_TIMES.get(request.sid)
+            t_formatted = timeago.format(t_started, datetime.now())
+            send('connection started ' + t_formatted)
         case _:
             send('unknown query')
 
