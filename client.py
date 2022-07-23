@@ -29,10 +29,20 @@ window = sg.Window('WS Client', layout)
 
 
 def event_timestamp(ts: datetime):
+    """
+    generate a message prefix for given timestamp
+
+    :param ts datetime: timestamp to be used
+    """
     return '[' + ts.strftime('%H:%M:%S') + ']'
 
 
 def format_msg(m: Dict[str, Any]):
+    """
+    format message object with timestamp and content
+
+    :param m Dict[str, Any]: message object
+    """
     return event_timestamp(m.get('at', datetime.now())) + ' ' + m.get('message', '')
 
 
