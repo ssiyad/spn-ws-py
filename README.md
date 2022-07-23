@@ -17,3 +17,10 @@ pipenv run python server.py
     - `clients_count` returns number of clients connected at the moment
     - `connection_length` returns time at which current connection was established
 
+## Client
+```
+pipenv run python client.py
+```
+#### Screenshot
+![client_screenshot](screenshots/client.png)
+
