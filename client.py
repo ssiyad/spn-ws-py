@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Any, Dict, List
 import PySimpleGUI as sg
 import socketio
 
@@ -7,7 +9,7 @@ sock.connect('http://localhost:5000')
 
 
 # keep a list of recent messages
-MSG_LIST = []
+MSG_LIST: List[Dict[str, Any]]= []
 
 
 # define layout
@@ -26,6 +28,14 @@ layout = [
 window = sg.Window('WS Client', layout)
 
 
+def event_timestamp(ts: datetime):
+    return '[' + ts.strftime('%H:%M:%S') + ']'
+
+
+def format_msg(m: Dict[str, Any]):
+    return event_timestamp(m.get('at', datetime.now())) + ' ' + m.get('message', '')
+
+
 @sock.on('message')
 def handle_messages(data):
     """
@@ -35,10 +45,15 @@ def handle_messages(data):
 
     # keep a list of recent messages by deleting older ones
     if len(MSG_LIST) > 10: MSG_LIST.pop(0)
-    MSG_LIST.append(str(data))
+    MSG_LIST.append(
+        {
+            'message': data,
+            'at': datetime.now()
+        }
+    )
 
     # update output with list of messages
-    o.update('⏺ ' + '\n⏺ '.join(MSG_LIST))
+    o.update('' + '\n'.join(map(format_msg, MSG_LIST)))
 
 
 # run a loop to listen to window events
