@@ -59,13 +59,19 @@ def handle_query(d):
     """
     match d:
         case 'server_timestamp':
-            send(datetime.now().isoformat())
+            send('Current server timestamp is ' + datetime.now().isoformat())
         case 'clients_count':
-            send(CLIENT_COUNT)
+            send('Number of clients connected is ' + str(CLIENT_COUNT))
         case 'connection_start':
             t_started = CLIENT_TIMES.get(request.sid)
+
+            # force `connect` if record does not exist
+            if not t_started:
+                connect()
+                t_started = datetime.now()
+
             t_formatted = timeago.format(t_started, datetime.now())
-            send('connection started ' + t_formatted)
+            send('Connection started ' + t_formatted)
         case _:
             send('unknown query')
 
