@@ -15,7 +15,7 @@ pipenv run python server.py
 - `query` with body
     - `server_timestamp` returns timetamp (iso 8601)
     - `clients_count` returns number of clients connected at the moment
-    - `connection_length` returns time at which current connection was established
+    - `connection_start` returns time at which current connection was established
 
 ## Client
 ```
