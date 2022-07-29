@@ -20,6 +20,7 @@ CLIENT_COUNT = 0
 # store start time of every client
 CLIENT_TIMES: Dict[str, datetime] = {}
 
+# store interval and timer of individual sessions
 INTERVALS: Dict[str, Dict[str, Any]] = {}
 
 
