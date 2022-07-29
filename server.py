@@ -77,6 +77,7 @@ def handle_config(d):
                 return
                 
             INTERVALS[request.sid] = value
+            send('interval set to ' + str(value))
         case _:
             send('unknown config key')
 
