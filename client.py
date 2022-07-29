@@ -20,6 +20,10 @@ layout = [
         sg.Button('Clients Count', key='clients_count'),
         sg.Button('Connection Time', key='connection_start'),
     ],
+    [
+        sg.InputText('60', key='__interval_int_', size=5),
+        sg.Button('Set Interval (in seconds)', key='config_interval')
+    ],
     [sg.Button('Quit')],
 ]
 
@@ -46,12 +50,18 @@ def format_msg(m: Dict[str, Any]):
     return event_timestamp(m.get('at', datetime.now())) + ' ' + m.get('message', '')
 
 
+def render_msg():
+    o = window['__output__']
+
+    # update output with list of messages
+    o.update('' + '\n'.join(map(format_msg, MSG_LIST)))
+
+
 @sock.on('message')
 def handle_messages(data):
     """
     listen for server responses
     """
-    o = window['__output__']
 
     # keep a list of recent messages by deleting older ones
     if len(MSG_LIST) > 10: MSG_LIST.pop(0)
@@ -62,8 +72,18 @@ def handle_messages(data):
         }
     )
 
-    # update output with list of messages
-    o.update('' + '\n'.join(map(format_msg, MSG_LIST)))
+    render_msg()
+
+
+def config_interval():
+    try:
+        value = int(window['__interval_int_'].get())
+        sock.emit('config', {
+                      'key': 'interval',
+                      'value': value,
+                  })
+    except Exception as e:
+        handle_messages(str(e))
 
 
 # run a loop to listen to window events
@@ -72,6 +92,10 @@ while True:
 
     # break loop if user want to quit
     if event == sg.WINDOW_CLOSED or event == 'Quit': break
+
+    if event == 'config_interval':
+        config_interval()
+        continue
 
     # send a message to server, as defined in layout
     sock.emit('query', event)
