@@ -92,6 +92,8 @@ def handle_config(d):
                 
             timer_stop(request.sid)
             status_update(request.sid, value)
+
+            send('interval set to ' + str(value))
         case _:
             send('unknown config key')
 
