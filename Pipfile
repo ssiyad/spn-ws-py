@@ -9,7 +9,7 @@ flask-socketio = "*"
 pysimplegui = "*"
 python-socketio = "*"
 timeago = "*"
-websocket-client = "*"
+gevent-websocket = "*"
 
 [dev-packages]
 
