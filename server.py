@@ -39,10 +39,7 @@ def status_update(sid, interval: Optional[int] = None):
 
 
 def timer_stop(sid):
-    t = INTERVALS.get(sid)
-    if not t: return;
-
-    t = t.get('timer')
+    t = INTERVALS.get(sid, {}).get('timer')
     if not t: return;
 
     t.cancel()
@@ -75,10 +72,7 @@ def disconnect():
     global CLIENT_COUNT
     CLIENT_COUNT -= 1
 
-    t = INTERVALS.get(request.sid, {}).get('timer')
-    if not t: return
-
-    t.cancel()
+    timer_stop(request.sid)
 
 
 @sock.on('config')
