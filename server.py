@@ -1,7 +1,8 @@
+from flask.json import loads
 import timeago
 from datetime import datetime
-from threading import Lock
-from typing import Dict
+from threading import Timer
+from typing import Dict, Any, Optional
 from flask import Flask, request
 from flask_socketio import SocketIO, send
 
@@ -10,20 +11,40 @@ app = Flask(__name__)
 sock = SocketIO(app, cors_allowed_origins='*')
 
 
+# default interval for status update
+INTERVAL_DEFAULT = 60
+
 # initial value for count of conneted clients
 CLIENT_COUNT = 0
 
 # store start time of every client
 CLIENT_TIMES: Dict[str, datetime] = {}
 
+INTERVALS: Dict[str, Dict[str, Any]] = {}
 
-def status_update():
-    """
-    broadcast a message every minute
-    """
-    while True:
-        sock.send('Connected')
-        sock.sleep(60)
+
+def status_update(sid, interval: Optional[int] = None):
+    sock.send('Connected', to=sid)
+
+    i = interval or INTERVALS.get(sid, {}).get('interval', INTERVAL_DEFAULT)
+    t = Timer(i, status_update, [sid])
+
+    INTERVALS[sid] = {
+        'timer': t,
+        'interval': i,
+    }
+
+    t.start()
+
+
+def timer_stop(sid):
+    t = INTERVALS.get(sid)
+    if not t: return;
+
+    t = t.get('timer')
+    if not t: return;
+
+    t.cancel()
 
 
 @sock.event
@@ -38,11 +59,13 @@ def connect():
     global CLIENT_COUNT
     CLIENT_COUNT += 1
 
+    status_update(request.sid)
+
 
 @sock.event
 def disconnect():
     """
-    handle `disconnect]` event
+    handle `disconnect` event
     """
     # `sid` is injected to the reqeust context by socketIO
     del CLIENT_TIMES[request.sid]
@@ -50,6 +73,27 @@ def disconnect():
     # reduce the number of clients connected
     global CLIENT_COUNT
     CLIENT_COUNT -= 1
+
+    t = INTERVALS.get(request.sid, {}).get('timer')
+    if not t: return
+
+    t.cancel()
+
+
+@sock.on('config')
+def handle_config(d):
+    match d.get('key'):
+        case 'interval':
+            try:
+                value = int(d.get('value', INTERVAL_DEFAULT))
+            except:
+                send('value must be an integer')
+                return
+                
+            timer_stop(request.sid)
+            status_update(request.sid, value)
+        case _:
+            send('unknown config key')
 
 
 @sock.on('query')
@@ -77,7 +121,4 @@ def handle_query(d):
 
 
 if __name__ == '__main__':
-    # start a start background task for broadcast
-    with Lock(): sock.start_background_task(status_update)
     sock.run(app)
-
