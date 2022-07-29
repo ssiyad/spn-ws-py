@@ -1,8 +1,7 @@
-from flask.json import loads
 import timeago
+from threading import Lock
 from datetime import datetime
-from threading import Timer
-from typing import Dict, Any, Optional
+from typing import Dict
 from flask import Flask, request
 from flask_socketio import SocketIO, send
 
@@ -12,7 +11,7 @@ sock = SocketIO(app, cors_allowed_origins='*')
 
 
 # default interval for status update
-INTERVAL_DEFAULT = 60
+INTERVAL_DEFAULT = 6
 
 # initial value for count of conneted clients
 CLIENT_COUNT = 0
@@ -20,31 +19,23 @@ CLIENT_COUNT = 0
 # store start time of every client
 CLIENT_TIMES: Dict[str, datetime] = {}
 
-INTERVALS: Dict[str, Dict[str, Any]] = {}
+# store intervals of individual sessions
+INTERVALS: Dict[str, int] = {}
 
 
-def status_update(sid, interval: Optional[int] = None):
-    sock.send('Connected', to=sid)
+def status_update():
+    # init counter as 0
+    c = 0
 
-    i = interval or INTERVALS.get(sid, {}).get('interval', INTERVAL_DEFAULT)
-    t = Timer(i, status_update, [sid])
+    while True:
+        # filter intervals by checking if `interval` is a multile of `counter`
+        for i in dict(filter(lambda x: c % x[1] == 0, INTERVALS.items())):
+            sock.send('Connected', to=i)
 
-    INTERVALS[sid] = {
-        'timer': t,
-        'interval': i,
-    }
+        sock.sleep(1)
 
-    t.start()
-
-
-def timer_stop(sid):
-    t = INTERVALS.get(sid)
-    if not t: return;
-
-    t = t.get('timer')
-    if not t: return;
-
-    t.cancel()
+        # increase counter
+        c += 1
 
 
 @sock.event
@@ -54,12 +45,11 @@ def connect():
     """
     # `sid` is injected to the reqeust context by socketIO
     CLIENT_TIMES[request.sid] = datetime.now()
+    INTERVALS[request.sid] = INTERVAL_DEFAULT
 
     # increase the number of clients connected
     global CLIENT_COUNT
     CLIENT_COUNT += 1
-
-    status_update(request.sid)
 
 
 @sock.event
@@ -69,15 +59,11 @@ def disconnect():
     """
     # `sid` is injected to the reqeust context by socketIO
     del CLIENT_TIMES[request.sid]
+    del INTERVALS[request.sid]
 
     # reduce the number of clients connected
     global CLIENT_COUNT
     CLIENT_COUNT -= 1
-
-    t = INTERVALS.get(request.sid, {}).get('timer')
-    if not t: return
-
-    t.cancel()
 
 
 @sock.on('config')
@@ -90,8 +76,7 @@ def handle_config(d):
                 send('value must be an integer')
                 return
                 
-            timer_stop(request.sid)
-            status_update(request.sid, value)
+            INTERVALS[request.sid] = value
         case _:
             send('unknown config key')
 
@@ -121,4 +106,6 @@ def handle_query(d):
 
 
 if __name__ == '__main__':
+    # start a start background task for broadcast
+    with Lock(): sock.start_background_task(status_update)
     sock.run(app)
